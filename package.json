@@ -1,0 +1,15 @@
+{
+  "name": "typelang",
+  "version": "1.0.0",
+  "description": "Experimental type language written in TypeScript typing system",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "Matej Marinko",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}
