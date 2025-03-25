@@ -33,3 +33,12 @@ type exception = Execute<
 //     message: "Empty string, cannot remove first character";
 //     instruction: Instruction.RemoveFirstChar;
 // }
+
+type ifElse = Execute<
+  [
+    Instruction.Extend<"a">,
+    Instruction.If<"a", [Instruction.Extend<"b">], [Instruction.Extend<"x">]>,
+    Instruction.If<"b", [Instruction.Extend<"x">], [Instruction.Extend<"c">]>
+  ]
+>;
+// type ifElse = "abc"

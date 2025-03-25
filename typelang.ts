@@ -12,12 +12,26 @@ export namespace Instruction {
     type: "cdr";
   };
 
+  // True if current value is equal to the given string
+  export type If<
+    Expect extends string,
+    IfTrue extends AvailableInstructions[],
+    IfFalse extends AvailableInstructions[]
+  > = { type: "if"; expect: Expect; ifTrue: IfTrue; ifFalse: IfFalse };
+
   export type AvailableInstructions =
     | Extend<string>
     | Uppercase
     | Lowercase
     | FirstChar
-    | RemoveFirstChar;
+    | RemoveFirstChar
+    | If<string, Array<any>, Array<any>>;
+
+  export type ControlFlow = If<
+    string,
+    AvailableInstructions[],
+    AvailableInstructions[]
+  >;
 }
 
 export type Exception<
@@ -66,5 +80,18 @@ export type Execute<
   infer First extends Instruction.AvailableInstructions,
   ...infer Rest extends Instruction.AvailableInstructions[]
 ]
-  ? Execute<Rest, Evaluate<First, Value>>
+  ? First extends Instruction.ControlFlow
+    ? // Control flow statements
+      First extends Instruction.If<
+        infer Expect extends string,
+        infer IfTrue,
+        infer IfFalse
+      >
+      ? // If control flow
+        Value extends Expect
+        ? Execute<Rest, Execute<IfTrue, Value>>
+        : Execute<Rest, Execute<IfFalse, Value>>
+      : Exception<"Unknown control flow instruction", First>
+    : // Normal instructions
+      Execute<Rest, Evaluate<First, Value>>
   : Value;
