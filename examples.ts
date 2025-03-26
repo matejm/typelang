@@ -65,3 +65,46 @@ type whileLoop = Execute<
   ]
 >;
 // type whileLoop = "aaaaaaaaab"
+
+type stripSpacesFromStart = Execute<
+  [
+    Instruction.SetValue<"    test test">,
+    Instruction.While<
+      Check.Equal<Instruction.FirstChar, Instruction.SetValue<" ">>,
+      [Instruction.RemoveFirstChar]
+    >
+  ]
+>;
+
+type replaceSpacesWithUnderscores = Execute<
+  [
+    Instruction.SetValue<"This is example text.">,
+    // add end of line character (go until that)
+    Instruction.Extend<"\n">,
+    Instruction.While<
+      Check.NotEqual<Instruction.FirstChar, Instruction.SetValue<"\n">>,
+      [
+        // Move first character at the end. If it's space, replace it with underscore
+        Instruction.If<
+          Check.Equal<Instruction.FirstChar, Instruction.SetValue<" ">>,
+          [Instruction.RemoveFirstChar, Instruction.Extend<"_">],
+          [Instruction.MoveFirstCharToEnd]
+        >
+      ]
+    >,
+    // Remove neLwline
+    Instruction.RemoveFirstChar
+  ]
+>;
+// type replaceSpacesWithUnderscores = "This_is_example_text."
+
+type tryBlock = Execute<
+  [
+    Instruction.SetValue<"a">,
+    Instruction.Try<
+      [Instruction.RemoveFirstChar, Instruction.RemoveFirstChar],
+      [Instruction.SetValue<"Exception!">]
+    >
+  ]
+>;
+// type tryBlock = "Exception!"
