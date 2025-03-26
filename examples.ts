@@ -1,8 +1,8 @@
-import { Execute, Instruction } from "./typelang";
+import { Check, Execute, Instruction } from "./typelang";
 
 type addStrings = Execute<
   [
-    Instruction.Extend<"a">,
+    Instruction.SetValue<"a">,
     Instruction.Extend<"b">,
     Instruction.Extend<"c">,
     Instruction.Extend<"d">
@@ -12,7 +12,7 @@ type addStrings = Execute<
 
 type getThirdCharUppercase = Execute<
   [
-    Instruction.Extend<"abcd">,
+    Instruction.SetValue<"abcd">,
     Instruction.RemoveFirstChar,
     Instruction.RemoveFirstChar,
     Instruction.Uppercase,
@@ -23,7 +23,7 @@ type getThirdCharUppercase = Execute<
 
 type exception = Execute<
   [
-    Instruction.Extend<"ab">,
+    Instruction.SetValue<"ab">,
     Instruction.RemoveFirstChar,
     Instruction.RemoveFirstChar,
     Instruction.RemoveFirstChar
@@ -36,9 +36,32 @@ type exception = Execute<
 
 type ifElse = Execute<
   [
-    Instruction.Extend<"a">,
-    Instruction.If<"a", [Instruction.Extend<"b">], [Instruction.Extend<"x">]>,
-    Instruction.If<"b", [Instruction.Extend<"x">], [Instruction.Extend<"c">]>
+    Instruction.SetValue<"a">,
+    Instruction.If<
+      Check.Equal<Instruction.CurrentValue, Instruction.SetValue<"a">>,
+      [Instruction.Extend<"b">],
+      [Instruction.Extend<"x">]
+    >,
+    Instruction.If<
+      Check.Equal<Instruction.CurrentValue, Instruction.SetValue<"b">>,
+      [Instruction.Extend<"x">],
+      [Instruction.Extend<"c">]
+    >
   ]
 >;
 // type ifElse = "abc"
+
+type whileLoop = Execute<
+  [
+    Instruction.ClearValue,
+    Instruction.While<
+      Check.NotEqual<
+        Instruction.CurrentValue,
+        Instruction.SetValue<"aaaaaaaaa">
+      >,
+      [Instruction.Extend<"a">]
+    >,
+    Instruction.Extend<"b">
+  ]
+>;
+// type whileLoop = "aaaaaaaaab"

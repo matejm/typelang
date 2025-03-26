@@ -1,4 +1,6 @@
 export namespace Instruction {
+  export type SetValue<Value extends string> = { type: "set"; value: Value };
+
   // String concatenation
   export type Extend<Value extends string> = { type: "extend"; value: Value };
 
@@ -14,24 +16,67 @@ export namespace Instruction {
 
   // True if current value is equal to the given string
   export type If<
-    Expect extends string,
+    Condition extends Check.AvailableChecks,
     IfTrue extends AvailableInstructions[],
     IfFalse extends AvailableInstructions[]
-  > = { type: "if"; expect: Expect; ifTrue: IfTrue; ifFalse: IfFalse };
+  > = { type: "if"; condition: Condition; ifTrue: IfTrue; ifFalse: IfFalse };
 
-  export type AvailableInstructions =
+  export type While<
+    Condition extends Check.AvailableChecks,
+    Instructions extends AvailableInstructions[]
+  > = { type: "while"; condition: Condition; instructions: Instructions };
+
+  // Derived methods
+
+  // Set value to empty string
+  export type ClearValue = SetValue<"">;
+  // Keep value as is, return current value
+  export type CurrentValue = Extend<"">;
+
+  export type NonControlFlow =
+    | SetValue<string>
     | Extend<string>
     | Uppercase
     | Lowercase
     | FirstChar
     | RemoveFirstChar
-    | If<string, Array<any>, Array<any>>;
+    | ClearValue
+    | CurrentValue;
 
-  export type ControlFlow = If<
-    string,
-    AvailableInstructions[],
-    AvailableInstructions[]
-  >;
+  // All control flow instructions
+  export type ControlFlow =
+    | If<
+        Check.AvailableChecks,
+        AvailableInstructions[],
+        AvailableInstructions[]
+      >
+    | While<Check.AvailableChecks, AvailableInstructions[]>;
+
+  export type AvailableInstructions = NonControlFlow | ControlFlow;
+}
+
+// Even if our memory is string, we still need bools for control flow
+// (how some expression evaluates)
+export namespace Check {
+  export type Equal<
+    Left extends Instruction.NonControlFlow,
+    Right extends Instruction.NonControlFlow
+  > = {
+    left: Left;
+    right: Right;
+  };
+
+  export type Not<Check extends AvailableChecks> = {
+    check: Check;
+  };
+
+  // Derived checks
+  export type NotEqual<
+    Left extends Instruction.NonControlFlow,
+    Right extends Instruction.NonControlFlow
+  > = Not<Equal<Left, Right>>;
+
+  export type AvailableChecks = Equal<any, any> | Not<any> | NotEqual<any, any>;
 }
 
 export type Exception<
@@ -51,7 +96,9 @@ export type Evaluate<
   Value extends string | Exception<string, Instruction.AvailableInstructions>
 > = Value extends string
   ? // Instructions
-    Instruction extends Instruction.Extend<infer ToExtend>
+    Instruction extends Instruction.SetValue<infer ToSet>
+    ? ToSet
+    : Instruction extends Instruction.Extend<infer ToExtend>
     ? `${Value}${ToExtend}`
     : Instruction extends Instruction.Uppercase
     ? Uppercase<Value>
@@ -69,6 +116,25 @@ export type Evaluate<
   : // Value is exception, pass it through
     Value;
 
+export type EvaluateCheck<
+  Check extends Check.AvailableChecks,
+  Value extends
+    | string
+    | Exception<string, Instruction.AvailableInstructions> = ""
+> = Check extends Check.Equal<infer Left, infer Right>
+  ? // Check equality by checking subtype in both sides
+    // Note: if exception is raised in check it won't be raised here, simply returned as false
+    Evaluate<Left, Value> extends Evaluate<Right, Value>
+    ? Evaluate<Right, Value> extends Evaluate<Left, Value>
+      ? true
+      : false
+    : false
+  : Check extends Check.Not<infer InnerCheck>
+  ? EvaluateCheck<InnerCheck, Value> extends true
+    ? false
+    : true
+  : false;
+
 // Execute program
 // (a list of instructions)
 export type Execute<
@@ -82,15 +148,22 @@ export type Execute<
 ]
   ? First extends Instruction.ControlFlow
     ? // Control flow statements
-      First extends Instruction.If<
-        infer Expect extends string,
-        infer IfTrue,
-        infer IfFalse
-      >
+      First extends Instruction.If<infer Condition, infer IfTrue, infer IfFalse>
       ? // If control flow
-        Value extends Expect
+        EvaluateCheck<Condition, Value> extends true
         ? Execute<Rest, Execute<IfTrue, Value>>
         : Execute<Rest, Execute<IfFalse, Value>>
+      : First extends Instruction.While<
+          infer Condition,
+          infer WhileInstructions
+        >
+      ? // While control flow
+        EvaluateCheck<Condition, Value> extends true
+        ? Execute<
+            [Instruction.While<Condition, WhileInstructions>, ...Rest],
+            Execute<WhileInstructions, Value>
+          >
+        : Execute<Rest, Value>
       : Exception<"Unknown control flow instruction", First>
     : // Normal instructions
       Execute<Rest, Evaluate<First, Value>>
